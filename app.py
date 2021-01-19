@@ -53,11 +53,10 @@ def token_required(f):
         except jwt.ExpiredSignatureError:
             data = jwt.decode(refreshtoken, app.config.get("SECRET_KEY"))
             current_user = UserModel.query.filter_by(id=data['id']).first()
-            accesstoken = jwt.encode({'id': current_user.id,'email':current_user.email, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=5)}, app.config['SECRET_KEY'])
-            refreshtoken = jwt.encode({'id': current_user.id,'email':current_user.email, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(days=1)}, app.config['SECRET_KEY'])
+            accesstoken = jwt.encode({'id': current_user.id,'email':current_user.email, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=1)}, app.config['SECRET_KEY'])
+            refreshtoken = jwt.encode({'id': current_user.id,'email':current_user.email, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=10)}, app.config['SECRET_KEY'])
             return {"access-token":accesstoken.decode('UTF-8'),"refresh-token":refreshtoken.decode('UTF-8')}
         except jwt.InvalidTokenError:
-            # the token is invalid, return an error string
             return "Token is invalid please login"
 
         return f(current_user, *args, **kwargs)
@@ -189,46 +188,38 @@ def loginuser():
             refreshtoken = jwt.encode({'id': user.id,'email':user.email, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(days=1)}, app.config['SECRET_KEY'])  
             admintoken = jwt.encode({'isadmin':True, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(days=1)}, app.config['SECRET_KEY'])  
             return{"status":"Login Successful","access-token":accesstoken.decode('UTF-8'),"refresh-token":refreshtoken.decode('UTF-8'),"admintoken":admintoken.decode('UTF-8')}
-            
+
         else:
             return{"status":"Credentials Error"}
     else:
         return{"message":"Not valid request"}      
 
 
-@app.route('/users/username',methods=["GET"])
+@app.route('/users',methods=["GET"])
 @token_required
 def getusername(currentuser):
     users = UserModel.query.filter_by(id=currentuser.id).first()
     return{"username":users.fname,"email":users.email}
 
 
-@app.route('/logout',methods=["POST"])
+@app.route('/me',methods=["GET"])
 @token_required
 def token(currentuser):
-    return{"valid":"valid"}
+    data={
+        "fname":currentuser.fname,
+        "lname":currentuser.lname,
+        "email":currentuser.email
+    }
+    return{"data":data}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+@app.route('/url',methods=["GET"])
+@token_required
+def tokenrequired(currentuser):
+    if currentuser:
+        return{"success":"Headers contains tokens"}
+    else:
+        return{"error":"No Token in header"}
 
 if __name__ == "__main__":
     app.run(debug=True)
